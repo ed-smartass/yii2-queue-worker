@@ -1,0 +1,21 @@
+{
+    "name": "ed-smartass/yii2-queue-worker-behavior",
+    "description": "Adding ability to start and manage yii2-queue workers",
+    "type": "yii2-extension",
+    "keywords": ["yii2","queue","queue worker","worker"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Smartass",
+            "email": "ed.smartass@gmail.com"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "~2.0.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Smartass\\Yii2QueueWorkerBehavior\\": ""
+        }
+    }
+}
