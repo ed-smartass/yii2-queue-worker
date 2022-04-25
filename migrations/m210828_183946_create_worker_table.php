@@ -14,7 +14,7 @@ class m210828_183946_create_worker_table extends Migration
     {
         $this->createTable('{{%queue_worker}}', [
             'worker_id' => $this->primaryKey(),
-            'channel' => $this->string(),
+            'component' => $this->string(),
             'pid' => $this->integer(),
             'queue_id' => $this->integer(),
             'started_at' => $this->timestamp()->defaultValue(null),
