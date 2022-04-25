@@ -6,13 +6,20 @@
     "license": "MIT",
     "authors": [
         {
-            "name": "Smartass",
-            "email": "ed.smartass@gmail.com"
+            "name": "ed-smartass",
+            "email": "62896221+ed-smartass@users.noreply.github.com"
         }
     ],
     "require": {
-        "yiisoft/yii2": "~2.0.0"
+        "yiisoft/yii2": "~2.0.14",
+        "yiisoft/yii2-queue": "^2.0"
     },
+    "repositories": [
+        {
+          "type": "composer",
+          "url": "https://asset-packagist.org"
+        }
+    ],
     "autoload": {
         "psr-4": {
             "Smartass\\Yii2QueueWorkerBehavior\\": ""

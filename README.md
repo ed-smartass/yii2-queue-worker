@@ -7,19 +7,11 @@ Installation
 
 The preferred way to install this extension is through [composer](http://getcomposer.org/download/).
 
-Either run
+Run
 
 ```
-php composer.phar require --prefer-dist ed-smartass/yii2-queue-worker-behavior "*"
+composer require ed-smartass/yii2-queue-worker-behavior
 ```
-
-or add
-
-```
-"ed-smartass/yii2-queue-worker-behavior": "*"
-```
-
-to the require section of your `composer.json` file.
 
 
 Usage
