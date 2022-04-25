@@ -27,6 +27,6 @@ class m210828_183946_create_worker_table extends Migration
      */
     public function safeDown()
     {
-        $this->dropTable('{{%worker}}');
+        $this->dropTable('{{%queue_worker}}');
     }
 }
