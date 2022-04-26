@@ -10,12 +10,12 @@ The preferred way to install this extension is through [composer](http://getcomp
 1. Run
 
 ```
-composer require ed-smartass/yii2-queue-worker-behavior
+composer require ed-smartass/yii2-queue-worker
 ```
 
 2. Apply migrations
 ```
-php yii migrate --migrationPath=@vendor/ed-smartass/yii2-queue-worker-behavior/migrations
+php yii migrate --migrationPath=@vendor/ed-smartass/yii2-queue-worker/migrations
 ```
 or add to console config and run migration
 ```
@@ -27,7 +27,7 @@ return [
             'class' => 'yii\console\controllers\MigrateController',
             'migrationPath' => [
                 '@console/migrations', // Default migration folder
-                '@vendor/ed-smartass/yii2-queue-worker-behavior/migrations'
+                '@vendor/ed-smartass/yii2-queue-worker/migrations'
             ]
         ]
         // ...
