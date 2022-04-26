@@ -13,12 +13,14 @@ The preferred way to install this extension is through [composer](http://getcomp
 composer require ed-smartass/yii2-queue-worker
 ```
 
+
 2. Apply migrations
+
 ```
 php yii migrate --migrationPath=@vendor/ed-smartass/yii2-queue-worker/migrations
 ```
 or add to console config and run migration
-```
+```php
 return [
     // ...
     'controllerMap' => [
@@ -36,8 +38,10 @@ return [
 ];
 ```
 
+
 3. Add behavior to queue config
-```
+
+```php
 return [
     // ...
     'components' => [
@@ -54,20 +58,34 @@ return [
 ];
 ```
 
+4. Add module to your application (optional)
+
+```php
+return [
+    // ...
+    'modules' => [
+        // ...
+        'queue-worker' => [
+            'class' => 'Smartass\Yii2QueueWorker\module\Module',
+            // If you want change view files just copy it from `vendor/ed-smartass/yii2-queue-worker/module/views`
+            // to `@app/views/queue-worke` and set:
+            // 'viewPath' => '@app/views/queue-worker'
+        ]
+        // ...
+    ]
+    // ...
+];
+```
+
 
 Usage
 -----
 
 All started workers you cant find at `queue_worker` table.
 
+Manage workers (if you config module): `https:://your-site.com/queue-workers`.
+
 To start worker
-
-1) Old way
-```
-php yii queue/listen
-```
-
-2) In yours Yii2 code
 ```
 Yii::$app->queue->start($timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color');
 ```
@@ -75,3 +93,15 @@ or
 ```
 QueueWorkerBehavior::startComponent($component = 'queue', $timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color');
 ```
+
+
+To stop worker
+```
+Yii::$app->queue->stop($worker_id = null);
+```
+or
+```
+QueueWorkerBehavior::stopComponent($component = null, $worker_id = null, $db = 'db', $table = '{{%queue_worker}}');
+```
+
+If `worker_id` is `null` all workers will stop.
