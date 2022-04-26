@@ -19,16 +19,6 @@ class QueueWorkerBehavior extends Behavior
     public $table = '{{%queue_worker}}';
 
     /**
-     * @var int|null
-     */
-    public $worker_id;
-
-    /**
-     * @var int|null
-     */
-    public $queue_id;
-
-    /**
      * {@inheritdoc}
      */
     public function events()
@@ -48,32 +38,17 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onWorkerStart($event)
     {
-        if ($this->worker_id) {
-            $success = $this->owner->db->createCommand()->update($this->table, [
-                'pid' => getmypid(),
-                'component' => $this->getComponentId(),
-                'queue_id' => null,
-                'started_at' => date('Y-m-d H:i:s'),
-                'looped_at' => null
-            ], ['worker_id' => $this->worker_id])->execute();
-        } else {
-            $success = $this->owner->db->createCommand()->insert($this->table, [
-                'pid' => getmypid(),
-                'component' => $this->getComponentId(),
-                'queue_id' => null,
-                'started_at' => date('Y-m-d H:i:s'),
-                'looped_at' => null
-            ])->execute();
-        }
+        $success = $this->owner->db->createCommand()->insert($this->table, [
+            'pid' => getmypid(),
+            'component' => $this->getComponentId(),
+            'queue_id' => null,
+            'started_at' => date('Y-m-d H:i:s'),
+            'looped_at' => null
+        ])->execute();
 
         if (!$success) {
             $event->exitCode = 200;
             return;
-        }
-
-        if (!$this->worker_id) {
-            $tableSchema = $this->owner->db->getTableSchema($this->table);
-            $this->worker_id = $this->owner->db->getLastInsertID($tableSchema->sequenceName);
         }
     }
 
@@ -83,15 +58,10 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onWorkerLoop($event)
     {
-        if (!$this->worker_id) {
-            $event->exitCode = 200;
-            return;
-        }
-
         $success = $this->owner->db->createCommand()->update($this->table, [
             'looped_at' => date('Y-m-d H:i:s')
         ], [
-            'worker_id' => $this->worker_id
+            'pid' => $event->sender->workerPid
         ])->execute();
 
         if (!$success) {
@@ -100,17 +70,16 @@ class QueueWorkerBehavior extends Behavior
     }
 
     /**
+     * @param WorkerEvent $event
      * @return void
      */
-    public function onWorkerStop()
+    public function onWorkerStop($event)
     {
-        if ($this->worker_id) {
+        if ($event->sender && $event->sender->workerPid) {
             $this->owner->db->createCommand()->delete($this->table, [
-                'worker_id' => $this->worker_id
+                'pid' => $event->sender->workerPid
             ])->execute();
         }
-
-        $this->worker_id = null;
     }
 
     /**
@@ -119,26 +88,23 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onBeforeExec($event)
     {
-        $this->queue_id = $event->id;
-
-        if ($this->worker_id) {
+        if ($event->sender && $event->sender->workerPid) {
             $this->owner->db->createCommand()->update($this->table, [
                 'queue_id' => $event->id
-            ], ['worker_id' => $this->worker_id])->execute();
+            ], ['pid' => $event->sender->workerPid])->execute();
         }
     }
 
     /**
+     * @param ExecEvent $event
      * @return void
      */
-    public function onAfterExec()
+    public function onAfterExec($event)
     {
-        $this->queue_id = null;
-
-        if ($this->worker_id) {
+        if ($event->sender && $event->sender->workerPid) {
             $this->owner->db->createCommand()->update($this->table, [
                 'queue_id' => null
-            ], ['worker_id' => $this->worker_id])->execute();
+            ], ['pid' => $event->sender->workerPid])->execute();
         }
     }
 
@@ -163,12 +129,12 @@ class QueueWorkerBehavior extends Behavior
     }
 
     /**
-     * @param string $component
+     * @param string|null $component
      * @param int|null $worker_id
      * @param string|Connection $db
      * @return void
      */
-    public static function stopComponent($component = 'queue', $worker_id = null, $db = 'db', $table = '{{%queue_worker}}')
+    public static function stopComponent($component = null, $worker_id = null, $db = 'db', $table = '{{%queue_worker}}')
     {
         if (is_string($db)) {
             $db = Yii::$app->get($db);
@@ -178,9 +144,11 @@ class QueueWorkerBehavior extends Behavior
             throw new InvalidCallException('db must be instanceof ' . Connection::class);
         }
 
-        $condition = [
-            'component' => $component
-        ];
+        $condition = [];
+
+        if ($component) {
+            $condition['component'] = $component;
+        }
 
         if ($worker_id) {
             $condition['worker_id'] = $worker_id;
