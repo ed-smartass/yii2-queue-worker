@@ -17,30 +17,23 @@ $this->params['breadcrumbs'][] = $this->title;
 ?>
 
 <div class="queue-worker-index">
-    <?php $form = ActiveForm::begin(['layout' => 'horizontal']); ?>
+    <?php $form = ActiveForm::begin(); ?>
     <div class="card mb-4">
-        <div class="card-header">
-            <div class="d-flex align-items-center">
-                <div class="mr-auto">Add workers</div>
-                <div>
-                <?= Html::submitButton('Create', ['class' => 'btn btn-success btn-sm']) ?>
-                </div>
-            </div>
-        </div>
+        <h5 class="card-header">
+            Add workers
+        </h5>
         <div class="card-body">
             <?= $form->field($model, 'total')->textInput(['type' => 'number', 'min' => 1, 'step' => 1]) ?>
             <?= $form->field($model, 'component')->dropdownList($componentOptions) ?>
         </div>
-    </div>
-    <?php ActiveForm::end(); ?>
-
-    <div class="card">
-        <div class="card-header">
+        <div class="card-footer text-muted">
             <div class="d-flex align-items-center">
-                <div class="mr-auto">Running workers</div>
+                <div class="mr-auto">
+                    <?= Html::submitButton('Create', ['class' => 'btn btn-success']) ?>
+                </div>
                 <div>
                     <?= Html::a('Delete all', ['delete-all'], [
-                        'class' => 'btn btn-danger btn-sm',
+                        'class' => 'btn btn-danger',
                         'data' => [
                             'confirm' => 'Are you sure?',
                             'method' => 'post',
@@ -49,68 +42,68 @@ $this->params['breadcrumbs'][] = $this->title;
                 </div>
             </div>
         </div>
-        <div class="card-body">
-            <?php $pjax = Pjax::begin(); ?>
-            <?= GridView::widget([
-                'dataProvider' => $dataProvider,
-                'columns' => [
-                    [
-                        'class' => 'yii\grid\SerialColumn',
-                        'headerOptions' => [
-                            'style' => 'width: 1%',
-                            'class' => 'text-nowrap text-right'
-                        ],
-                        'contentOptions' => [
-                            'style' => 'width: 1%',
-                            'class' => 'text-nowrap text-right'
-                        ]
-                    ],
-                    [
-                        'attribute' => 'pid'
-                    ],
-                    [
-                        'attribute' => 'component'
-                    ],
-                    [
-                        'attribute' => 'queue_id'
-                    ],
-                    [
-                        'attribute' => 'started_at',
-                        'format' => 'relativeTime',
-                        'headerOptions' => [
-                            'style' => 'width: 1%',
-                            'class' => 'text-nowrap'
-                        ],
-                        'contentOptions' => [
-                            'style' => 'width: 1%',
-                            'class' => 'text-nowrap'
-                        ]
-                    ],
-                    [
-                        'attribute' => 'looped_at',
-                        'format' => 'relativeTime',
-                        'headerOptions' => [
-                            'style' => 'width: 1%',
-                            'class' => 'text-nowrap'
-                        ],
-                        'contentOptions' => [
-                            'style' => 'width: 1%',
-                            'class' => 'text-nowrap'
-                        ]
-                    ],
-                    [
-                        'class' => 'yii\grid\ActionColumn',
-                        'template' => '{delete}',
-                        'contentOptions' => [
-                            'style' => 'width: 1%',
-                            'class' => 'text-nowrap'
-                        ]
-                    ]
-                ]
-            ]) ?>
-            <?php Pjax::end(); ?>
-        </div>
     </div>
+    <?php ActiveForm::end(); ?>
+
+    <?php $pjax = Pjax::begin(); ?>
+    <?= GridView::widget([
+        'dataProvider' => $dataProvider,
+        'columns' => [
+            [
+                'class' => 'yii\grid\SerialColumn',
+                'headerOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap text-right'
+                ],
+                'contentOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap text-right'
+                ]
+            ],
+            [
+                'attribute' => 'pid'
+            ],
+            [
+                'attribute' => 'component'
+            ],
+            [
+                'attribute' => 'queue_id'
+            ],
+            [
+                'attribute' => 'started_at',
+                'format' => 'relativeTime',
+                'headerOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap'
+                ],
+                'contentOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap'
+                ]
+            ],
+            [
+                'attribute' => 'looped_at',
+                'format' => 'relativeTime',
+                'headerOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap'
+                ],
+                'contentOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap'
+                ]
+            ],
+            [
+                'class' => 'yii\grid\ActionColumn',
+                'template' => '{delete}',
+                'contentOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap'
+                ]
+            ]
+        ]
+    ]) ?>
+    <?php Pjax::end(); ?>
 </div>
 
 <?php
