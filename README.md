@@ -46,7 +46,7 @@ return [
             'class' => 'yii\queue\db\Queue',
             'mutex' => 'yii\mutex\MysqlMutex',
             // ...
-            'as worker' => 'Smartass\Yii2QueueWorkerBehavior\QueueWorkerBehavior'
+            'as worker' => 'Smartass\Yii2QueueWorker\QueueWorkerBehavior'
         ]
         // ...
     ]

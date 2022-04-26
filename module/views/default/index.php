@@ -2,13 +2,13 @@
 
 /** @var \yii\web\View $this */
 
-use yii\bootstrap4\ActiveForm;
-use yii\bootstrap4\Html;
+use yii\widgets\ActiveForm;
 use yii\grid\GridView;
+use yii\helpers\Html;
 use yii\widgets\Pjax;
 
 /** @var \yii\data\ActiveDataProvider $dataProvider */
-/** @var \Smartass\Yii2QueueWorkerBehavior\module\forms\WorkerQueueForm $model */
+/** @var \Smartass\Yii2QueueWorker\module\forms\QueueWorkerForm $model */
 /** @var array $componentOptions */
 
 $this->title = 'Queue Workers';

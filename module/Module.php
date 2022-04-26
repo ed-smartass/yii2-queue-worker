@@ -1,6 +1,6 @@
 <?php
 
-namespace Smartass\Yii2QueueWorkerBehavior\module;
+namespace Smartass\Yii2QueueWorker\module;
 
 use yii\base\Module as BaseModule;
 use yii\db\Connection;

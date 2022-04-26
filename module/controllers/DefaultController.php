@@ -1,9 +1,9 @@
 <?php
 
-namespace Smartass\Yii2QueueWorkerBehavior\module\controllers;
+namespace Smartass\Yii2QueueWorker\module\controllers;
 
-use Smartass\Yii2QueueWorkerBehavior\module\forms\WorkerQueueForm;
-use Smartass\Yii2QueueWorkerBehavior\QueueWorkerBehavior;
+use Smartass\Yii2QueueWorker\module\forms\QueueWorkerForm;
+use Smartass\Yii2QueueWorker\QueueWorkerBehavior;
 use Yii;
 use yii\data\ActiveDataProvider;
 use yii\db\Query;
@@ -17,7 +17,7 @@ class DefaultController extends Controller
      */
     public function actionIndex()
     {
-        $model = new WorkerQueueForm();
+        $model = new QueueWorkerForm();
 
         if ($model->load(Yii::$app->request->post()) && $model->start()) {
             return $this->redirect(['index']);
@@ -32,7 +32,7 @@ class DefaultController extends Controller
         return $this->render('index', [
             'dataProvider' => $dataProvider,
             'model' => $model,
-            'componentOptions' => WorkerQueueForm::getComponentOptionNames()
+            'componentOptions' => QueueWorkerForm::getComponentOptionNames()
         ]);
     }
 

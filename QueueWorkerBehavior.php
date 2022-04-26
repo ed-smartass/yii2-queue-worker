@@ -1,6 +1,6 @@
 <?php
 
-namespace Smartass\Yii2QueueWorkerBehavior;
+namespace Smartass\Yii2QueueWorker;
 
 use Yii;
 use yii\base\Behavior;

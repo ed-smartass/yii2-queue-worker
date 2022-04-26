@@ -1,14 +1,14 @@
 <?php
 
-namespace Smartass\Yii2QueueWorkerBehavior\module\forms;
+namespace Smartass\Yii2QueueWorker\module\forms;
 
-use Smartass\Yii2QueueWorkerBehavior\QueueWorkerBehavior;
+use Smartass\Yii2QueueWorker\QueueWorkerBehavior;
 use Yii;
 use yii\base\Model;
 use yii\helpers\Inflector;
 use yii\queue\cli\Queue;
 
-class WorkerQueueForm extends Model
+class QueueWorkerForm extends Model
 {
     /**
      * @var int

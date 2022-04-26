@@ -1,5 +1,5 @@
 {
-    "name": "ed-smartass/yii2-queue-worker-behavior",
+    "name": "ed-smartass/yii2-queue-worker",
     "description": "Adding ability to start and manage yii2-queue workers",
     "type": "yii2-extension",
     "keywords": ["yii2","queue","queue worker","worker"],
@@ -22,7 +22,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "Smartass\\Yii2QueueWorkerBehavior\\": ""
+            "Smartass\\Yii2QueueWorker\\": ""
         }
     }
 }
