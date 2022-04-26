@@ -5,9 +5,10 @@ namespace Smartass\Yii2QueueWorkerBehavior;
 use Yii;
 use yii\base\Behavior;
 use yii\base\InvalidCallException;
+use yii\db\Connection;
 use yii\helpers\Inflector;
 use yii\queue\cli\WorkerEvent;
-use yii\queue\db\Queue;
+use yii\queue\cli\Queue;
 use yii\queue\ExecEvent;
 
 class QueueWorkerBehavior extends Behavior
@@ -142,6 +143,12 @@ class QueueWorkerBehavior extends Behavior
     }
 
     /**
+     * Undocumented function
+     *
+     * @param string $component
+     * @param integer $timeout
+     * @param string $yiiPath
+     * @param string $params
      * @return void
      */
     public static function startComponent($component = 'queue', $timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color')
@@ -156,12 +163,50 @@ class QueueWorkerBehavior extends Behavior
     }
 
     /**
+     * @param string $component
+     * @param int|null $worker_id
+     * @param string|Connection $db
+     * @return void
+     */
+    public static function stopComponent($component = 'queue', $worker_id = null, $db = 'db', $table = '{{%queue_worker}}')
+    {
+        if (is_string($db)) {
+            $db = Yii::$app->get($db);
+        }
+
+        if (!($db instanceof Connection)) {
+            throw new InvalidCallException('db must be instanceof ' . Connection::class);
+        }
+
+        $condition = [
+            'component' => $component
+        ];
+
+        if ($worker_id) {
+            $condition['worker_id'] = $worker_id;
+        }
+
+        $db->createCommand()->delete($table, $condition)->execute();
+    }
+
+    /**
      * @return void
      */
     public function start($timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color')
     {
         if ($id = $this->getComponentId()) {
             static::startComponent($id, $timeout, $yiiPath, $params);
+        }
+    }
+
+    /**
+     * @param int|null $worker_id
+     * @return void
+     */
+    public function stop($worker_id = null)
+    {
+        if ($id = $this->getComponentId()) {
+            static::stopComponent($id, $worker_id, $this->owner->db, $this->table);
         }
     }
 

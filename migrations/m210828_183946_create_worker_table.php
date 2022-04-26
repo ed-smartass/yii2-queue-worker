@@ -3,7 +3,7 @@
 use yii\db\Migration;
 
 /**
- * Handles the creation of table `{{%worker}}`.
+ * Handles the creation of table `{{%queue_worker}}`.
  */
 class m210828_183946_create_worker_table extends Migration
 {
