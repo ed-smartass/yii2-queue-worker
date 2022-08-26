@@ -6,6 +6,7 @@ use Yii;
 use yii\base\Behavior;
 use yii\base\InvalidCallException;
 use yii\db\Connection;
+use yii\db\Query;
 use yii\helpers\Inflector;
 use yii\queue\cli\WorkerEvent;
 use yii\queue\cli\Queue;
@@ -13,6 +14,11 @@ use yii\queue\ExecEvent;
 
 class QueueWorkerBehavior extends Behavior
 {
+    /**
+     * @var int|null
+     */
+    protected $worker_id;
+
     /**
      * @var string
      */
@@ -50,6 +56,8 @@ class QueueWorkerBehavior extends Behavior
             $event->exitCode = 200;
             return;
         }
+
+        $this->worker_id = $this->owner->db->getLastInsertID();
     }
 
     /**
@@ -58,26 +66,31 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onWorkerLoop($event)
     {
-        $success = $this->owner->db->createCommand()->update($this->table, [
+        $exists = (new Query())
+            ->from($this->table)
+            ->andWhere(['worker_id' => $this->worker_id])
+            ->exists();
+
+        if (!$exists) {
+            $event->exitCode = 200;
+            return;
+        }
+
+        $this->owner->db->createCommand()->update($this->table, [
             'looped_at' => date('Y-m-d H:i:s')
         ], [
-            'pid' => $event->sender->workerPid
+            'worker_id' => $this->worker_id
         ])->execute();
-
-        if (!$success) {
-            $event->exitCode = 200;
-        }
     }
 
     /**
-     * @param WorkerEvent $event
      * @return void
      */
-    public function onWorkerStop($event)
+    public function onWorkerStop()
     {
-        if ($event->sender && $event->sender->workerPid) {
+        if ($this->worker_id) {
             $this->owner->db->createCommand()->delete($this->table, [
-                'pid' => $event->sender->workerPid
+                'worker_id' => $this->worker_id
             ])->execute();
         }
     }
@@ -88,29 +101,26 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onBeforeExec($event)
     {
-        if ($event->sender && $event->sender->workerPid) {
+        if ($this->worker_id) {
             $this->owner->db->createCommand()->update($this->table, [
                 'queue_id' => $event->id
-            ], ['pid' => $event->sender->workerPid])->execute();
+            ], ['worker_id' => $this->worker_id])->execute();
         }
     }
 
     /**
-     * @param ExecEvent $event
      * @return void
      */
-    public function onAfterExec($event)
+    public function onAfterExec()
     {
-        if ($event->sender && $event->sender->workerPid) {
+        if ($this->worker_id) {
             $this->owner->db->createCommand()->update($this->table, [
                 'queue_id' => null
-            ], ['pid' => $event->sender->workerPid])->execute();
+            ], ['worker_id' => $this->worker_id])->execute();
         }
     }
 
     /**
-     * Undocumented function
-     *
      * @param string $component
      * @param integer $timeout
      * @param string $yiiPath
