@@ -66,21 +66,25 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onWorkerLoop($event)
     {
-        $exists = (new Query())
-            ->from($this->table)
-            ->andWhere(['worker_id' => $this->worker_id])
-            ->exists();
+        try {
+            $exists = (new Query())
+                ->from($this->table)
+                ->andWhere(['worker_id' => $this->worker_id])
+                ->exists();
 
-        if (!$exists) {
-            $event->exitCode = 200;
-            return;
+            if (!$exists) {
+                $event->exitCode = 200;
+                return;
+            }
+
+            $this->owner->db->createCommand()->update($this->table, [
+                'looped_at' => date('Y-m-d H:i:s')
+            ], [
+                'worker_id' => $this->worker_id
+            ])->execute();
+        } catch (\Throwable $th) {
+            Yii::error($th, \yii\queue\Queue::class);
         }
-
-        $this->owner->db->createCommand()->update($this->table, [
-            'looped_at' => date('Y-m-d H:i:s')
-        ], [
-            'worker_id' => $this->worker_id
-        ])->execute();
     }
 
     /**
@@ -101,22 +105,31 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onBeforeExec($event)
     {
-        if ($this->worker_id) {
-            $this->owner->db->createCommand()->update($this->table, [
-                'queue_id' => $event->id
-            ], ['worker_id' => $this->worker_id])->execute();
+        try {
+            if ($event->sender && $event->sender->workerPid) {
+                $this->owner->db->createCommand()->update($this->table, [
+                    'queue_id' => $event->id
+                ], ['pid' => $event->sender->workerPid])->execute();
+            }
+        } catch (\Throwable $th) {
+            Yii::error($th, \yii\queue\Queue::class);
         }
     }
 
     /**
+     * @param ExecEvent $event
      * @return void
      */
-    public function onAfterExec()
+    public function onAfterExec($event)
     {
-        if ($this->worker_id) {
-            $this->owner->db->createCommand()->update($this->table, [
-                'queue_id' => null
-            ], ['worker_id' => $this->worker_id])->execute();
+        try {
+            if ($this->worker_id) {
+                $this->owner->db->createCommand()->update($this->table, [
+                    'queue_id' => null
+                ], ['pid' => $event->sender->workerPid])->execute();
+            }
+        } catch (\Throwable $th) {
+            Yii::error($th, \yii\queue\Queue::class);
         }
     }
 
