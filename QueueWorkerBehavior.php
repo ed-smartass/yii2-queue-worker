@@ -140,9 +140,9 @@ class QueueWorkerBehavior extends Behavior
      * @param string $params
      * @return void
      */
-    public static function startComponent($component = 'queue', $timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color')
+    public static function startComponent($component = 'queue', $timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color', $phpPath = 'php')
     {
-        $command = 'php ' . Yii::getAlias($yiiPath) . ' ' . Inflector::camel2id($component) .'/listen ' . $timeout . ' ' . $params;
+        $command = $phpPath . ' ' . Yii::getAlias($yiiPath) . ' ' . Inflector::camel2id($component) .'/listen ' . $timeout . ' ' . $params;
 
         if (substr(php_uname(), 0, 7) == 'Windows'){ 
             pclose(popen('start ' . $command, 'r'));  
@@ -183,10 +183,10 @@ class QueueWorkerBehavior extends Behavior
     /**
      * @return void
      */
-    public function start($timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color')
+    public function start($timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color', $phpPath = 'php')
     {
         if ($id = $this->getComponentId()) {
-            static::startComponent($id, $timeout, $yiiPath, $params);
+            static::startComponent($id, $timeout, $yiiPath, $params, $phpPath);
         }
     }
 
