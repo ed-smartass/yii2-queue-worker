@@ -7,6 +7,7 @@ use yii\base\Behavior;
 use yii\base\InvalidCallException;
 use yii\db\Connection;
 use yii\db\Query;
+use yii\di\Instance;
 use yii\helpers\Inflector;
 use yii\queue\cli\WorkerEvent;
 use yii\queue\cli\Queue;
@@ -23,6 +24,41 @@ class QueueWorkerBehavior extends Behavior
      * @var string
      */
     public $table = '{{%queue_worker}}';
+
+    /**
+     * @var string|Connection
+     */
+    public $db = 'db';
+
+    /**
+     * @var string
+     */
+    public $yiiPath = '@app/../yii';
+
+    /**
+     * @var int
+     */
+    public $timeout = 3;
+
+    /**
+     * @var string
+     */
+    public $params = '--verbose --color';
+
+    /**
+     * @var string
+     */
+    public $phpPath = 'php';
+
+    /**
+     * @inheritdoc
+     */
+    public function init()
+    {
+        parent::init();
+
+        $this->db = Instance::ensure($this->db, Connection::class);
+    }
 
     /**
      * {@inheritdoc}
@@ -44,10 +80,11 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onWorkerStart($event)
     {
-        $success = $this->owner->db->createCommand()->insert($this->table, [
+        $success = $this->db->createCommand()->insert($this->table, [
             'pid' => getmypid(),
             'component' => $this->getComponentId(),
             'queue_id' => null,
+            'stoped' => false,
             'started_at' => date('Y-m-d H:i:s'),
             'looped_at' => null
         ])->execute();
@@ -57,7 +94,7 @@ class QueueWorkerBehavior extends Behavior
             return;
         }
 
-        $this->worker_id = $this->owner->db->getLastInsertID();
+        $this->worker_id = $this->db->getLastInsertID();
     }
 
     /**
@@ -67,21 +104,22 @@ class QueueWorkerBehavior extends Behavior
     public function onWorkerLoop($event)
     {
         try {
-            $exists = (new Query())
-                ->from($this->table)
-                ->andWhere(['worker_id' => $this->worker_id])
-                ->exists();
+            if ($this->worker_id) {
+                $worker = (new Query())
+                    ->from($this->table)
+                    ->andWhere(['worker_id' => $this->worker_id])
+                    ->one($this->db);
 
-            if (!$exists) {
-                $event->exitCode = 200;
-                return;
+                if (!$worker || $worker['stoped']) {
+                    $event->exitCode = 200;
+                } else {
+                    $this->db->createCommand()->update($this->table, [
+                        'looped_at' => date('Y-m-d H:i:s')
+                    ], [
+                        'worker_id' => $this->worker_id
+                    ])->execute();
+                }
             }
-
-            $this->owner->db->createCommand()->update($this->table, [
-                'looped_at' => date('Y-m-d H:i:s')
-            ], [
-                'worker_id' => $this->worker_id
-            ])->execute();
         } catch (\Throwable $th) {
             Yii::error($th, \yii\queue\Queue::class);
         }
@@ -92,10 +130,25 @@ class QueueWorkerBehavior extends Behavior
      */
     public function onWorkerStop()
     {
-        if ($this->worker_id) {
-            $this->owner->db->createCommand()->delete($this->table, [
-                'worker_id' => $this->worker_id
-            ])->execute();
+        try {
+            if ($this->worker_id) {
+                $worker = (new Query())
+                    ->from($this->table)
+                    ->andWhere(['worker_id' => $this->worker_id])
+                    ->one($this->db);
+
+                if (!$worker) {
+                    return;
+                } else if ($worker['stoped']) {
+                    $this->db->createCommand()->delete($this->table, [
+                        'worker_id' => $this->worker_id
+                    ])->execute();
+                } else {
+                    $this->start($this->timeout, $this->yiiPath, $this->params, $this->phpPath);
+                }
+            }
+        } catch (\Throwable $th) {
+            Yii::error($th, \yii\queue\Queue::class);
         }
     }
 
@@ -107,7 +160,7 @@ class QueueWorkerBehavior extends Behavior
     {
         try {
             if ($event->sender && $event->sender->workerPid) {
-                $this->owner->db->createCommand()->update($this->table, [
+                $this->db->createCommand()->update($this->table, [
                     'queue_id' => $event->id
                 ], ['pid' => $event->sender->workerPid])->execute();
             }
@@ -123,8 +176,8 @@ class QueueWorkerBehavior extends Behavior
     public function onAfterExec($event)
     {
         try {
-            if ($this->worker_id) {
-                $this->owner->db->createCommand()->update($this->table, [
+            if ($event->sender && $event->sender->workerPid) {
+                $this->db->createCommand()->update($this->table, [
                     'queue_id' => null
                 ], ['pid' => $event->sender->workerPid])->execute();
             }
@@ -177,16 +230,16 @@ class QueueWorkerBehavior extends Behavior
             $condition['worker_id'] = $worker_id;
         }
 
-        $db->createCommand()->delete($table, $condition)->execute();
+        $db->createCommand()->update($table, ['stoped' => true], $condition)->execute();
     }
 
     /**
      * @return void
      */
-    public function start($timeout = 3, $yiiPath = '@app/../yii', $params = '--verbose --color', $phpPath = 'php')
+    public function start()
     {
         if ($id = $this->getComponentId()) {
-            static::startComponent($id, $timeout, $yiiPath, $params, $phpPath);
+            static::startComponent($id, $this->timeout, $this->yiiPath, $this->params, $this->phpPath);
         }
     }
 
@@ -197,7 +250,7 @@ class QueueWorkerBehavior extends Behavior
     public function stop($worker_id = null)
     {
         if ($id = $this->getComponentId()) {
-            static::stopComponent($id, $worker_id, $this->owner->db, $this->table);
+            static::stopComponent($id, $worker_id, $this->db, $this->table);
         }
     }
 
