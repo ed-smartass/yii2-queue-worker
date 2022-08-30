@@ -139,12 +139,13 @@ class QueueWorkerBehavior extends Behavior
 
                 if (!$worker) {
                     return;
-                } else if ($worker['stoped']) {
+                } else {
                     $this->db->createCommand()->delete($this->table, [
                         'worker_id' => $this->worker_id
                     ])->execute();
-                } else {
-                    $this->start($this->timeout, $this->yiiPath, $this->params, $this->phpPath);
+                    if (!$worker['stoped']) {
+                        $this->start();
+                    }
                 }
             }
         } catch (\Throwable $th) {
