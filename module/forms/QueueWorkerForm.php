@@ -2,9 +2,9 @@
 
 namespace Smartass\Yii2QueueWorker\module\forms;
 
-use Smartass\Yii2QueueWorker\QueueWorkerBehavior;
 use Yii;
 use yii\base\Model;
+use yii\db\Query;
 use yii\helpers\Inflector;
 use yii\queue\cli\Queue;
 
@@ -28,7 +28,7 @@ class QueueWorkerForm extends Model
         return [
             ['total', 'required'],
             ['total', 'integer',
-                'min' => 1
+                'min' => 0
             ],
 
             ['component', 'required'],
@@ -76,8 +76,28 @@ class QueueWorkerForm extends Model
             return false;
         }
 
-        for ($i = 0; $i < $this->total; $i++) { 
-            QueueWorkerBehavior::startComponent($this->component);
+        $component = Yii::$app->get($this->component);
+
+        $count = (int)(new Query())
+            ->from($component->table)
+            ->andWhere(['component' => $this->component])
+            ->andWhere(['stoped' => false])
+            ->count('*', $component->db);
+
+        if ($this->total >= $count) {
+            for ($i = $count; $i < $this->total; $i++) {
+                $component->start();
+            }
+        } else {
+            $worker_ids = (new Query())
+                ->from($component->table)
+                ->select('worker_id')
+                ->andWhere(['component' => $this->component])
+                ->andWhere(['stoped' => false])
+                ->limit($count - $this->total)
+                ->column();
+
+            $component->stop($worker_ids);
         }
 
         return true;
