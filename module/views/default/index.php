@@ -130,10 +130,14 @@ $this->params['breadcrumbs'][] = $this->title;
 <?php
 $containerId = $pjax->id;
 $this->registerJs(<<<JS
-    var refreshInterval = setInterval(function() {
+    if (window.queueWorkerRefreshInterval) {
+        clearInterval(window.queueWorkerRefreshInterval);
+    }
+
+    window.queueWorkerRefreshInterval = setInterval(function() {
         if ($.pjax) {
             $.pjax.reload({container: '#{$containerId}'});
         }
     }, 3000);
-JS, \yii\web\View::POS_READY);
+JS, \yii\web\View::POS_READY, 'queue-worker-refresh-interval');
 ?>

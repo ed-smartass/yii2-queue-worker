@@ -74,12 +74,13 @@ class WorkerController extends Controller
             return $output !== null && stripos($output, (string) $pid) !== false;
         }
 
-        if (function_exists('posix_getpgid')) {
-            return @posix_getpgid($pid) !== false;
+        if (function_exists('posix_kill')) {
+            return @posix_kill($pid, 0);
         }
 
-        // Fallback: check /proc filesystem
-        return file_exists('/proc/' . $pid);
+        $output = shell_exec('ps -p ' . escapeshellarg((string) $pid) . ' -o pid= 2>/dev/null');
+
+        return $output !== null && trim($output) === (string) $pid;
     }
 
     /**
@@ -90,8 +91,7 @@ class WorkerController extends Controller
         try {
             $component = Yii::$app->get($worker['component']);
 
-            if ($component instanceof Queue) {
-                /** @var Queue|\Smartass\Yii2QueueWorker\QueueWorkerBehavior $component */
+            if (method_exists($component, 'start')) {
                 $component->start();
                 $this->stdout("Restarted dead worker for component '{$worker['component']}' (was PID {$worker['pid']})\n");
             }

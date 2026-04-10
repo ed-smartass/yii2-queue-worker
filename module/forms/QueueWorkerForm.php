@@ -71,6 +71,10 @@ class QueueWorkerForm extends Model
     {
         $options = static::getComponentOptions();
 
+        if (empty($options)) {
+            return [];
+        }
+
         return array_map(function (string $id): string {
             return Inflector::camel2id($id);
         }, array_combine($options, $options));

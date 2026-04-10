@@ -10,13 +10,13 @@ class ModuleTest extends TestCase
 {
     protected function mockApplication(array $config = []): \yii\console\Application
     {
-        return parent::mockApplication([
+        return parent::mockApplication(array_replace_recursive([
             'modules' => [
                 'queue-worker' => [
                     'class' => Module::class,
                 ],
             ],
-        ]);
+        ], $config));
     }
 
     public function testModuleInit(): void

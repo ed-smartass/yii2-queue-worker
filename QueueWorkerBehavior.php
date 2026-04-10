@@ -261,7 +261,7 @@ class QueueWorkerBehavior extends Behavior
         }
 
         if (PHP_OS_FAMILY === 'Windows') {
-            pclose(popen('start /B ' . $command, 'r'));
+            pclose(popen('start "" /B ' . $command, 'r'));
         } else {
             exec($command . ' > /dev/null 2>&1 &');
         }
