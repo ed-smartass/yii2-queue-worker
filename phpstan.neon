@@ -1,0 +1,21 @@
+parameters:
+    level: 5
+    paths:
+        - QueueWorkerBehavior.php
+        - controllers/
+        - module/
+    excludePaths:
+        - migrations/
+        - vendor/
+        - module/views/
+    scanDirectories:
+        - vendor/yiisoft/yii2
+        - vendor/yiisoft/yii2-queue
+    bootstrapFiles:
+        - vendor/yiisoft/yii2/Yii.php
+    treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        # Yii2 module properties accessed via $this->module are not typed
+        - '#Access to an undefined property yii\\base\\Module::\$#'
+        # Yii2 Queue workerPid is a magic property
+        - '#Access to an undefined property yii\\queue\\Queue::\$workerPid#'

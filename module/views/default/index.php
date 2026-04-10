@@ -67,7 +67,27 @@ $this->params['breadcrumbs'][] = $this->title;
                 'attribute' => 'component'
             ],
             [
-                'attribute' => 'queue_id'
+                'attribute' => 'queue_id',
+                'label' => 'Current Job',
+            ],
+            [
+                'attribute' => 'stopped',
+                'label' => 'Status',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    if ($model['stopped']) {
+                        return '<span class="badge badge-warning">Stopping</span>';
+                    }
+                    return '<span class="badge badge-success">Running</span>';
+                },
+                'headerOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap'
+                ],
+                'contentOptions' => [
+                    'style' => 'width: 1%',
+                    'class' => 'text-nowrap'
+                ]
             ],
             [
                 'attribute' => 'started_at',
@@ -83,6 +103,7 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             [
                 'attribute' => 'looped_at',
+                'label' => 'Last Heartbeat',
                 'format' => 'relativeTime',
                 'headerOptions' => [
                     'style' => 'width: 1%',
@@ -107,10 +128,16 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 
 <?php
+$containerId = $pjax->id;
+$this->registerJs(<<<JS
+    if (window.queueWorkerRefreshInterval) {
+        clearInterval(window.queueWorkerRefreshInterval);
+    }
 
-$this->registerJs(' 
-        setInterval(function() {  
-            $.pjax.reload({ container: "#' . $pjax->id . '" })
-        }, 3000)
-    ', \yii\web\VIEW::POS_HEAD);
+    window.queueWorkerRefreshInterval = setInterval(function() {
+        if ($.pjax) {
+            $.pjax.reload({container: '#{$containerId}'});
+        }
+    }, 3000);
+JS, \yii\web\View::POS_READY, 'queue-worker-refresh-interval');
 ?>

@@ -14,7 +14,7 @@ class Module extends BaseModule
     public $table = '{{%queue_worker}}';
 
     /**
-     * @var string
+     * @var string|Connection
      */
     public $db = 'db';
 
