@@ -2,7 +2,7 @@
     "name": "ed-smartass/yii2-queue-worker",
     "description": "Adding ability to start and manage yii2-queue workers",
     "type": "yii2-extension",
-    "keywords": ["yii2","queue","queue worker","worker"],
+    "keywords": ["yii2", "queue", "queue worker", "worker", "process manager"],
     "license": "MIT",
     "authors": [
         {
@@ -11,18 +11,33 @@
         }
     ],
     "require": {
+        "php": ">=8.0",
         "yiisoft/yii2": "~2.0.14",
         "yiisoft/yii2-queue": "^2.0"
     },
-    "repositories": [
-        {
-          "type": "composer",
-          "url": "https://asset-packagist.org"
-        }
-    ],
+    "require-dev": {
+        "phpunit/phpunit": "^9.5|^10.0",
+        "phpstan/phpstan": "^1.10",
+        "yidas/yii2-bower-asset": "*"
+    },
     "autoload": {
         "psr-4": {
             "Smartass\\Yii2QueueWorker\\": ""
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Smartass\\Yii2QueueWorker\\tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "phpstan": "phpstan analyse"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true
         }
     }
 }
