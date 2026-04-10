@@ -33,3 +33,6 @@ phpunit.phar
 # ignore generated files
 
 /.vscode
+
+# phpunit cache
+.phpunit.result.cache
