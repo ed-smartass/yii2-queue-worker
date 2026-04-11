@@ -141,6 +141,23 @@ class QueueWorkerBehaviorTest extends TestCase
         $this->assertEquals(0, $this->countWorkerRecords());
     }
 
+    public function testOnWorkerStopSkipsRestartOnShortUptime(): void
+    {
+        $behavior = $this->getBehavior();
+        $behavior->minRestartUptime = 60;
+
+        // Start the worker — started_at is set to "now"
+        $workerEvent = new WorkerEvent();
+        $behavior->onWorkerStart($workerEvent);
+
+        // Trigger stop immediately — uptime is effectively 0, well below 60s threshold.
+        // This must NOT call $this->start() (which would spawn a child process),
+        // so the only effect is the DB record being deleted.
+        $behavior->onWorkerStop();
+
+        $this->assertEquals(0, $this->countWorkerRecords());
+    }
+
     public function testOnBeforeExecSetsQueueId(): void
     {
         $behavior = $this->getBehavior();
@@ -312,7 +329,7 @@ class QueueWorkerBehaviorTest extends TestCase
         $this->assertEquals(3, $behavior->timeout);
         $this->assertEquals('--verbose --color', $behavior->params);
         $this->assertEquals('php', $behavior->phpPath);
-        $this->assertEquals(3, $behavior->maxRestarts);
+        $this->assertEquals(10, $behavior->minRestartUptime);
     }
 
     public function testSignalHandlerRegistration(): void

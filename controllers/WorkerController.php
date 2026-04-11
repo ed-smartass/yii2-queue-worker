@@ -2,6 +2,7 @@
 
 namespace Smartass\Yii2QueueWorker\controllers;
 
+use Smartass\Yii2QueueWorker\QueueWorkerBehavior;
 use Yii;
 use yii\console\Controller;
 use yii\db\Connection;
@@ -85,19 +86,58 @@ class WorkerController extends Controller
 
     /**
      * Restarts a worker by launching a new process for its component.
+     *
+     * Resolves the attached {@see QueueWorkerBehavior} explicitly rather than relying on
+     * `method_exists($component, 'start')`, because Yii2 behavior methods are injected
+     * via the `__call` magic method and are not visible to `method_exists()`.
      */
     protected function restartWorker(array $worker): void
     {
-        try {
-            $component = Yii::$app->get($worker['component']);
+        $componentId = $worker['component'];
 
-            if (method_exists($component, 'start')) {
-                $component->start();
-                $this->stdout("Restarted dead worker for component '{$worker['component']}' (was PID {$worker['pid']})\n");
+        try {
+            if (!Yii::$app->has($componentId)) {
+                Yii::warning("Component '{$componentId}' is not registered, skipping restart", Queue::class);
+                return;
             }
+
+            $component = Yii::$app->get($componentId);
+            $behavior = $this->resolveWorkerBehavior($component);
+
+            if ($behavior === null) {
+                Yii::warning(
+                    "Component '{$componentId}' has no QueueWorkerBehavior attached, skipping restart",
+                    Queue::class
+                );
+                return;
+            }
+
+            $behavior->start();
+            $this->stdout("Restarted dead worker for component '{$componentId}' (was PID {$worker['pid']})\n");
         } catch (\Throwable $th) {
-            Yii::error("Failed to restart worker for component '{$worker['component']}': {$th->getMessage()}", Queue::class);
-            $this->stderr("Failed to restart worker for component '{$worker['component']}': {$th->getMessage()}\n");
+            Yii::error("Failed to restart worker for component '{$componentId}': {$th->getMessage()}", Queue::class);
+            $this->stderr("Failed to restart worker for component '{$componentId}': {$th->getMessage()}\n");
         }
+    }
+
+    /**
+     * Finds the {@see QueueWorkerBehavior} attached to the given component, if any.
+     *
+     * Scans all attached behaviors rather than relying on a hard-coded behavior name,
+     * so users are free to attach the behavior under any key.
+     */
+    protected function resolveWorkerBehavior(object $component): ?QueueWorkerBehavior
+    {
+        if (!method_exists($component, 'getBehaviors')) {
+            return null;
+        }
+
+        foreach ($component->getBehaviors() as $behavior) {
+            if ($behavior instanceof QueueWorkerBehavior) {
+                return $behavior;
+            }
+        }
+
+        return null;
     }
 }

@@ -13,14 +13,14 @@
         </testsuite>
     </testsuites>
 
-    <filter>
-        <whitelist>
+    <source>
+        <include>
             <file>QueueWorkerBehavior.php</file>
             <directory>controllers</directory>
             <directory>module</directory>
-            <exclude>
-                <directory>migrations</directory>
-            </exclude>
-        </whitelist>
-    </filter>
+        </include>
+        <exclude>
+            <directory>migrations</directory>
+        </exclude>
+    </source>
 </phpunit>
