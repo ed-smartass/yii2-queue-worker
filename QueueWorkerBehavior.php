@@ -51,19 +51,20 @@ class QueueWorkerBehavior extends Behavior
     public string $phpPath = 'php';
 
     /**
-     * @var int Maximum number of automatic restarts before giving up.
+     * @var int Minimum uptime in seconds required before a crashed worker is auto-restarted.
+     *
+     * If a worker exits unexpectedly in less than this many seconds after starting, it is
+     * treated as a crash-looping worker and will NOT be auto-restarted from within the
+     * behavior. The external {@see \Smartass\Yii2QueueWorker\controllers\WorkerController}
+     * cron check should be used to detect and restart such workers once the underlying
+     * issue is resolved.
      */
-    public int $maxRestarts = 3;
+    public int $minRestartUptime = 10;
 
     /**
      * @var bool Whether the worker should stop (set by signal handler).
      */
     protected bool $shouldStop = false;
-
-    /**
-     * @var int Number of restarts performed for this worker instance.
-     */
-    protected int $restartCount = 0;
 
     /**
      * @var string|null Cached component ID to avoid repeated lookups.
@@ -123,7 +124,6 @@ class QueueWorkerBehavior extends Behavior
         }
 
         $this->worker_id = (int) $this->db->getLastInsertID();
-        $this->restartCount = 0;
     }
 
     /**
@@ -183,16 +183,37 @@ class QueueWorkerBehavior extends Behavior
                 'worker_id' => $this->worker_id,
             ])->execute();
 
-            // Auto-restart only if not manually stopped and within restart limits
+            // Auto-restart only if not manually stopped and the worker ran long enough
+            // to not be a crash-loop. Cross-process restart counting is intentionally
+            // not attempted here — an external supervisor (systemd, supervisord) should
+            // handle crash-loop mitigation. Note: the WorkerController::actionCheck cron
+            // recovers workers whose processes died *without* triggering onWorkerStop()
+            // (hard kills, segfaults); it will NOT recover workers skipped by the guard
+            // below, because their DB records are deleted as part of the normal stop
+            // event a few lines above.
             if (!$worker['stopped'] && !$this->shouldStop) {
-                if ($this->restartCount < $this->maxRestarts) {
-                    $this->restartCount++;
-                    $delay = min(2 ** $this->restartCount, 30);
-                    Yii::info("Worker restarting (attempt {$this->restartCount}/{$this->maxRestarts}) after {$delay}s delay", Queue::class);
-                    sleep($delay);
-                    $this->start();
+                // Fail-closed: if started_at is missing or unparseable (older DB rows,
+                // unexpected formats), treat uptime as 0 and skip the restart. The health
+                // check cron will still pick the record up on its next run.
+                $uptime = 0;
+                if (!empty($worker['started_at'])) {
+                    $startedAt = strtotime((string) $worker['started_at']);
+                    if ($startedAt !== false) {
+                        $uptime = max(0, time() - $startedAt);
+                    }
+                }
+
+                if ($uptime < $this->minRestartUptime) {
+                    Yii::warning(
+                        "Worker for component '{$worker['component']}' exited after only {$uptime}s "
+                        . "(minRestartUptime={$this->minRestartUptime}s); skipping in-process restart "
+                        . 'to avoid crash loop. The DB record has been cleaned up, so '
+                        . '`worker/check` will NOT recover this worker — bring it back via an '
+                        . 'external supervisor (systemd, supervisord) or by calling start() manually.',
+                        Queue::class
+                    );
                 } else {
-                    Yii::warning("Worker exceeded max restarts ({$this->maxRestarts}), not restarting", Queue::class);
+                    $this->start();
                 }
             }
         } catch (\Throwable $th) {
@@ -312,11 +333,14 @@ class QueueWorkerBehavior extends Behavior
 
         $db->createCommand()->update($table, ['stopped' => true], $condition)->execute();
 
-        // Send SIGTERM for faster shutdown
+        // Send SIGTERM for faster shutdown. SIGTERM is defined by the pcntl extension,
+        // which is optional and independent of posix — guard the constant so we don't
+        // fatally error on environments that have posix but not pcntl.
+        $termSignal = defined('SIGTERM') ? SIGTERM : 15;
         foreach ($pids as $pid) {
             $pid = (int) $pid;
             if ($pid > 0) {
-                posix_kill($pid, SIGTERM);
+                posix_kill($pid, $termSignal);
             }
         }
     }

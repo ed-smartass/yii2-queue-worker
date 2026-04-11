@@ -3,6 +3,7 @@
 namespace Smartass\Yii2QueueWorker\tests;
 
 use Smartass\Yii2QueueWorker\controllers\WorkerController;
+use Smartass\Yii2QueueWorker\QueueWorkerBehavior;
 use Yii;
 use yii\db\Connection;
 
@@ -122,5 +123,51 @@ class WorkerControllerTest extends TestCase
 
         // Use a very high PID that doesn't exist
         $this->assertFalse($ref->invoke($controller, 999999999));
+    }
+
+    public function testResolveWorkerBehaviorFindsAttachedBehavior(): void
+    {
+        $controller = $this->createController();
+
+        $ref = new \ReflectionMethod($controller, 'resolveWorkerBehavior');
+        $ref->setAccessible(true);
+
+        $behavior = $ref->invoke($controller, Yii::$app->queue);
+        $this->assertInstanceOf(QueueWorkerBehavior::class, $behavior);
+    }
+
+    public function testResolveWorkerBehaviorReturnsNullWhenNoBehaviorAttached(): void
+    {
+        // Create a queue component WITHOUT the behavior
+        Yii::$app->set('queueNoBehavior', [
+            'class' => \yii\queue\file\Queue::class,
+            'path' => '@runtime/queue-no-behavior',
+        ]);
+
+        $controller = $this->createController();
+
+        $ref = new \ReflectionMethod($controller, 'resolveWorkerBehavior');
+        $ref->setAccessible(true);
+
+        $this->assertNull($ref->invoke($controller, Yii::$app->queueNoBehavior));
+    }
+
+    public function testActionCheckSkipsMissingComponents(): void
+    {
+        // Insert a worker pointing at a component that doesn't exist
+        $this->insertWorkerRecord([
+            'pid' => 999999999,
+            'component' => 'nonexistent-queue',
+            'stopped' => false,
+        ]);
+
+        $controller = $this->createController();
+
+        ob_start();
+        $controller->actionCheck();
+        ob_end_clean();
+
+        // Record should still be cleaned up even if the component is missing
+        $this->assertEquals(0, $this->countWorkerRecords());
     }
 }

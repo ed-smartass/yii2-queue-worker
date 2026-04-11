@@ -7,11 +7,11 @@
 
 A Yii2 extension for starting, stopping, and monitoring [yii2-queue](https://github.com/yiisoft/yii2-queue) workers directly from your application — via code or a built-in web UI.
 
-Worker processes are tracked in a database table with PID, component name, heartbeat timestamp, and current job ID. The extension supports graceful shutdown via POSIX signals (Ctrl+C), automatic restart with exponential backoff, and a health-check console command for cron-based monitoring.
+Worker processes are tracked in a database table with PID, component name, heartbeat timestamp, and current job ID. The extension supports graceful shutdown via POSIX signals (Ctrl+C), in-process auto-restart with crash-loop protection, and a health-check console command for cron-based monitoring.
 
 ## Requirements
 
-- PHP >= 8.0
+- PHP >= 8.1
 - Yii2 >= 2.0.14
 - yii2-queue >= 2.0
 - `pcntl` extension (recommended, for signal handling)
@@ -60,7 +60,7 @@ return [
                 // 'phpPath' => '/usr/bin/php',
                 // 'yiiPath' => '@app/../yii',
                 // 'params' => '--verbose --color',
-                // 'maxRestarts' => 3,
+                // 'minRestartUptime' => 10,
             ],
         ],
     ],
@@ -95,7 +95,7 @@ The web UI will be available at `/queue-worker`.
 | `timeout` | int | `3` | Queue listen timeout (seconds) |
 | `params` | string | `--verbose --color` | CLI arguments for queue/listen |
 | `phpPath` | string | `php` | Path to PHP binary |
-| `maxRestarts` | int | `3` | Max automatic restarts before stopping |
+| `minRestartUptime` | int | `10` | Minimum uptime (seconds) before a crashed worker is auto-restarted |
 
 ## Usage
 
@@ -166,13 +166,11 @@ On signal, the worker record is updated in the database and the process terminat
 
 ### Auto-Restart
 
-If a worker stops unexpectedly (not via manual stop), it automatically restarts with exponential backoff:
+If a worker exits unexpectedly (not via a manual stop or signal), the behavior launches a new worker process in place. To avoid crash loops, the behavior only restarts workers whose uptime was at least `minRestartUptime` seconds (default `10`). Workers that die sooner than that — and workers with a missing or unparseable `started_at` — are logged as a warning and **not** auto-restarted: the DB record is cleaned up and the worker must be brought back by an external supervisor (`systemd`, `supervisord`) or by re-issuing `start()` manually.
 
-- Attempt 1: 2 second delay
-- Attempt 2: 4 second delay
-- Attempt 3: 8 second delay
+Note that the `worker/check` cron command is designed to recover workers whose process died **without** triggering `onWorkerStop()` (e.g. hard kill, segfault). It does not recover workers skipped by the crash-loop guard above, because those records are deleted as part of the normal stop event. Use an external supervisor if you need tight in-process crash-loop recovery.
 
-After `maxRestarts` (default 3) consecutive failures, the worker stops permanently. Successful loop iterations reset the counter.
+This deliberately does not try to count restarts across processes: each spawned worker is a fresh PHP process with its own memory.
 
 ## Architecture
 

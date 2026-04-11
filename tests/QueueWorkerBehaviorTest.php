@@ -141,6 +141,65 @@ class QueueWorkerBehaviorTest extends TestCase
         $this->assertEquals(0, $this->countWorkerRecords());
     }
 
+    public function testOnWorkerStopSkipsRestartOnShortUptime(): void
+    {
+        $behavior = $this->getBehavior();
+        $behavior->minRestartUptime = 60;
+
+        // Start the worker — started_at is set to "now"
+        $workerEvent = new WorkerEvent();
+        $behavior->onWorkerStart($workerEvent);
+
+        // Trigger stop immediately — uptime is effectively 0, well below 60s threshold.
+        // This must NOT call $this->start() (which would spawn a child process),
+        // so the only effect is the DB record being deleted.
+        $behavior->onWorkerStop();
+
+        $this->assertEquals(0, $this->countWorkerRecords());
+    }
+
+    public function testOnWorkerStopSkipsRestartWhenStartedAtIsNull(): void
+    {
+        // Fail-closed behavior: if started_at is missing or unparseable
+        // (older DB rows, unexpected formats), the restart should be skipped.
+        $behavior = $this->getBehavior();
+        $behavior->minRestartUptime = 60;
+
+        // Start the worker normally
+        $workerEvent = new WorkerEvent();
+        $behavior->onWorkerStart($workerEvent);
+
+        // Corrupt the started_at value to simulate a stale/unexpected row
+        Yii::$app->db->createCommand()->update('{{%queue_worker}}', [
+            'started_at' => null,
+        ])->execute();
+
+        // Stop must NOT restart — if it did, we'd see a second DB record spawning,
+        // but more importantly the test verifies that the skip-warning branch fires
+        // instead of the restart branch (which would try to fork a PHP process).
+        $behavior->onWorkerStop();
+
+        $this->assertEquals(0, $this->countWorkerRecords());
+    }
+
+    public function testOnWorkerStopSkipsRestartWhenStartedAtIsUnparseable(): void
+    {
+        $behavior = $this->getBehavior();
+        $behavior->minRestartUptime = 60;
+
+        $workerEvent = new WorkerEvent();
+        $behavior->onWorkerStart($workerEvent);
+
+        // Put garbage into started_at that strtotime() cannot parse
+        Yii::$app->db->createCommand()->update('{{%queue_worker}}', [
+            'started_at' => 'not-a-valid-timestamp-at-all',
+        ])->execute();
+
+        $behavior->onWorkerStop();
+
+        $this->assertEquals(0, $this->countWorkerRecords());
+    }
+
     public function testOnBeforeExecSetsQueueId(): void
     {
         $behavior = $this->getBehavior();
@@ -312,7 +371,7 @@ class QueueWorkerBehaviorTest extends TestCase
         $this->assertEquals(3, $behavior->timeout);
         $this->assertEquals('--verbose --color', $behavior->params);
         $this->assertEquals('php', $behavior->phpPath);
-        $this->assertEquals(3, $behavior->maxRestarts);
+        $this->assertEquals(10, $behavior->minRestartUptime);
     }
 
     public function testSignalHandlerRegistration(): void
