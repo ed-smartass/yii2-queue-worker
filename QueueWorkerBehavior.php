@@ -189,8 +189,16 @@ class QueueWorkerBehavior extends Behavior
             // for recovery of genuinely dead workers, and an external supervisor (systemd,
             // supervisord) should handle crash-loop mitigation.
             if (!$worker['stopped'] && !$this->shouldStop) {
-                $startedAt = !empty($worker['started_at']) ? strtotime($worker['started_at']) : false;
-                $uptime = $startedAt !== false ? (time() - $startedAt) : PHP_INT_MAX;
+                // Fail-closed: if started_at is missing or unparseable (older DB rows,
+                // unexpected formats), treat uptime as 0 and skip the restart. The health
+                // check cron will still pick the record up on its next run.
+                $uptime = 0;
+                if (!empty($worker['started_at'])) {
+                    $startedAt = strtotime((string) $worker['started_at']);
+                    if ($startedAt !== false) {
+                        $uptime = max(0, time() - $startedAt);
+                    }
+                }
 
                 if ($uptime < $this->minRestartUptime) {
                     Yii::warning(
