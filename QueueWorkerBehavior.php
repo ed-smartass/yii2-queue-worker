@@ -185,9 +185,12 @@ class QueueWorkerBehavior extends Behavior
 
             // Auto-restart only if not manually stopped and the worker ran long enough
             // to not be a crash-loop. Cross-process restart counting is intentionally
-            // not attempted here — the WorkerController::actionCheck cron is responsible
-            // for recovery of genuinely dead workers, and an external supervisor (systemd,
-            // supervisord) should handle crash-loop mitigation.
+            // not attempted here — an external supervisor (systemd, supervisord) should
+            // handle crash-loop mitigation. Note: the WorkerController::actionCheck cron
+            // recovers workers whose processes died *without* triggering onWorkerStop()
+            // (hard kills, segfaults); it will NOT recover workers skipped by the guard
+            // below, because their DB records are deleted as part of the normal stop
+            // event a few lines above.
             if (!$worker['stopped'] && !$this->shouldStop) {
                 // Fail-closed: if started_at is missing or unparseable (older DB rows,
                 // unexpected formats), treat uptime as 0 and skip the restart. The health
@@ -204,8 +207,9 @@ class QueueWorkerBehavior extends Behavior
                     Yii::warning(
                         "Worker for component '{$worker['component']}' exited after only {$uptime}s "
                         . "(minRestartUptime={$this->minRestartUptime}s); skipping in-process restart "
-                        . 'to avoid crash loop. Rely on WorkerController::actionCheck or an external '
-                        . 'supervisor to restart it.',
+                        . 'to avoid crash loop. The DB record has been cleaned up, so '
+                        . '`worker/check` will NOT recover this worker — bring it back via an '
+                        . 'external supervisor (systemd, supervisord) or by calling start() manually.',
                         Queue::class
                     );
                 } else {

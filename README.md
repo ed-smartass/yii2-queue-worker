@@ -166,9 +166,11 @@ On signal, the worker record is updated in the database and the process terminat
 
 ### Auto-Restart
 
-If a worker exits unexpectedly (not via a manual stop or signal), the behavior launches a new worker process in place. To avoid crash loops, the behavior only restarts workers whose uptime was at least `minRestartUptime` seconds (default `10`). Workers that die sooner than that are logged as a warning and left for the health-check cron to recover.
+If a worker exits unexpectedly (not via a manual stop or signal), the behavior launches a new worker process in place. To avoid crash loops, the behavior only restarts workers whose uptime was at least `minRestartUptime` seconds (default `10`). Workers that die sooner than that — and workers with a missing or unparseable `started_at` — are logged as a warning and **not** auto-restarted: the DB record is cleaned up and the worker must be brought back by an external supervisor (`systemd`, `supervisord`) or by re-issuing `start()` manually.
 
-This deliberately does not try to count restarts across processes: each spawned worker is a fresh PHP process with its own memory. For tight crash-loop protection, use an external supervisor (`systemd`, `supervisord`) or the `worker/check` cron, which detects dead DB records and restarts them.
+Note that the `worker/check` cron command is designed to recover workers whose process died **without** triggering `onWorkerStop()` (e.g. hard kill, segfault). It does not recover workers skipped by the crash-loop guard above, because those records are deleted as part of the normal stop event. Use an external supervisor if you need tight in-process crash-loop recovery.
+
+This deliberately does not try to count restarts across processes: each spawned worker is a fresh PHP process with its own memory.
 
 ## Architecture
 
